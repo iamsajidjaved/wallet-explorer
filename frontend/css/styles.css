@@ -646,25 +646,101 @@ tr:hover {
     color: #ff4757;
 }
 
-/* Hash Link */
-.hash-link {
-    color: var(--accent-blue);
-    text-decoration: none;
-    font-family: 'Monaco', monospace;
-    font-size: 0.85rem;
-    transition: color 0.3s ease;
-}
-
-.hash-link:hover {
-    color: var(--accent-purple);
-    text-decoration: underline;
-}
-
 /* Address Display */
 .address {
     font-family: 'Monaco', monospace;
     font-size: 0.85rem;
     color: var(--text-secondary);
+}
+
+.address-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Copy Button */
+.copy-btn {
+    background: transparent;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.copy-btn:hover {
+    opacity: 1;
+    color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.copy-btn:active {
+    transform: scale(0.95);
+}
+
+/* Explorer Link */
+.explorer-column {
+    text-align: center;
+    width: 80px;
+}
+
+.explorer-cell {
+    text-align: center;
+}
+
+.explorer-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--accent-blue);
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.explorer-link:hover {
+    border-color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.1);
+    transform: translateY(-2px);
+}
+
+.explorer-link svg {
+    transition: transform 0.3s ease;
+}
+
+.explorer-link:hover svg {
+    transform: scale(1.1);
+}
+
+/* Copy Notification */
+.copy-notification {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--accent-green);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-weight: 600;
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.copy-notification.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 /* Pagination */

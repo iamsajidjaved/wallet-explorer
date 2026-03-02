@@ -238,7 +238,7 @@ function sortTransactions(field) {
         let bVal = b[field];
 
         // Handle numeric fields
-        if (field === 'timestamp' || field === 'block_number') {
+        if (field === 'timestamp') {
             aVal = Number(aVal);
             bVal = Number(bVal);
         }
@@ -284,43 +284,86 @@ function renderTransactions() {
 
     transactionsTBody.innerHTML = pageTransactions.map(tx => `
         <tr>
-            <td>
-                <a href="${getExplorerUrl(tx)}" target="_blank" class="hash-link">
-                    ${truncateHash(tx.hash)}
-                </a>
-            </td>
-            <td><span class="badge badge-${tx.network.toLowerCase()}">${tx.network}</span></td>
             <td>${tx.datetime}</td>
-            <td><span class="address" title="${tx.from}">${truncateAddress(tx.from)}</span></td>
-            <td><span class="address" title="${tx.to}">${truncateAddress(tx.to)}</span></td>
+            <td>
+                <div class="address-cell">
+                    <span class="address" title="${tx.from}">${truncateAddress(tx.from)}</span>
+                    <button class="copy-btn" onclick="copyToClipboard('${tx.from}')" title="Copy address">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </td>
+            <td>
+                <div class="address-cell">
+                    <span class="address" title="${tx.to}">${truncateAddress(tx.to)}</span>
+                    <button class="copy-btn" onclick="copyToClipboard('${tx.to}')" title="Copy address">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </td>
             <td><strong>${formatAmount(tx.amount)}</strong></td>
             <td><span class="badge" style="background: rgba(255,255,255,0.1);">${tx.token_symbol}</span></td>
             <td><span class="badge badge-${tx.direction}">${tx.direction}</span></td>
-            <td>${tx.status}</td>
-            <td>${tx.block_number.toLocaleString()}</td>
+            <td class="explorer-cell">
+                <a href="${getExplorerUrl(tx)}" target="_blank" class="explorer-link" title="View on ${tx.network === 'ERC' ? 'Etherscan' : 'TronScan'}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                </a>
+            </td>
         </tr>
     `).join('');
 }
 
+// Copy to clipboard function
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        // Show a brief success notification
+        const notification = document.createElement('div');
+        notification.className = 'copy-notification';
+        notification.textContent = 'Address copied!';
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+    });
+}
+
+// Make it globally available for onclick handlers
+window.copyToClipboard = copyToClipboard;
+
 // Export to CSV
 function exportToCSV() {
     const headers = [
-        'Hash', 'Network', 'Date & Time', 'From', 'To', 'Amount', 
-        'Token', 'Direction', 'Status', 'Block Number', 'Gas Fee'
+        'Date & Time', 'From', 'To', 'Amount', 
+        'Token', 'Direction', 'Hash', 'Explorer URL'
     ];
 
     const rows = filteredTransactions.map(tx => [
-        tx.hash,
-        tx.network,
         tx.datetime,
         tx.from,
         tx.to,
         tx.amount,
         tx.token_symbol,
         tx.direction,
-        tx.status,
-        tx.block_number,
-        tx.gas_fee || 'N/A'
+        tx.hash,
+        getExplorerUrl(tx)
     ]);
 
     let csv = headers.join(',') + '\n';
