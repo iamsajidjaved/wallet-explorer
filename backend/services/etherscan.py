@@ -179,6 +179,10 @@ class EtherscanService:
                 gas_price = int(tx.get("gasPrice", "0"))
                 gas_fee_eth = (gas_used * gas_price) / 1e18
                 
+                # Token symbol comes directly from smart contract
+                # Some tokens may have unusual names - this is actual blockchain data
+                token_symbol = tx.get("tokenSymbol", "UNKNOWN")
+                
                 transactions.append(Transaction(
                     hash=tx["hash"],
                     network="ERC",
@@ -186,7 +190,7 @@ class EtherscanService:
                     datetime=datetime.fromtimestamp(int(tx["timeStamp"])).strftime("%Y-%m-%d %H:%M:%S"),
                     **{"from": tx["from"], "to": tx["to"]},
                     amount=f"{amount:.8f}",
-                    token_symbol=tx.get("tokenSymbol", "UNKNOWN"),
+                    token_symbol=token_symbol,
                     token_contract=tx.get("contractAddress"),
                     direction=direction,
                     status="Success",

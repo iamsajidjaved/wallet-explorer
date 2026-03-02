@@ -36,6 +36,7 @@ const counterpartySelected = document.getElementById('counterpartySelected');
 
 const headerBackBtn = document.getElementById('headerBackBtn');
 const backBtn = document.getElementById('backBtn');
+const resetFiltersBtn = document.getElementById('resetFiltersBtn');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
 
 const transactionsTBody = document.getElementById('transactionsTBody');
@@ -60,8 +61,8 @@ async function fetchTransactions() {
     showLoading();
 
     try {
-        const timeParam = timeFilter.value ? `&time_filter=${timeFilter.value}` : '';
-        const url = `/api/transactions/${walletAddress}?${timeParam}`;
+        // Fetch ALL transactions without time filtering (do it client-side)
+        const url = `/api/transactions/${walletAddress}`;
         console.log('Fetching from URL:', url);
         
         const response = await fetch(url);
@@ -110,8 +111,13 @@ function updateCounterpartyFilter() {
     const counterparties = new Set();
     
     allTransactions.forEach(tx => {
-        counterparties.add(tx.from);
-        counterparties.add(tx.to);
+        // Only add non-empty addresses
+        if (tx.from && tx.from.trim()) {
+            counterparties.add(tx.from);
+        }
+        if (tx.to && tx.to.trim()) {
+            counterparties.add(tx.to);
+        }
     });
 
     // Remove the wallet address itself
@@ -131,12 +137,17 @@ function renderCounterpartyOptions(searchTerm = '') {
         window.allCounterparties = [];
     }
     
+    // Filter addresses by search term and remove any empty values
     const filteredAddresses = window.allCounterparties.filter(address => 
+        address && 
+        address.trim() && 
         address.toLowerCase().includes(searchTerm.toLowerCase())
     );
     
+    // Start with "All Addresses" option
     counterpartyOptions.innerHTML = '<div class="dropdown-option" data-value="">All Addresses</div>';
     
+    // Add filtered wallet addresses
     filteredAddresses.forEach(address => {
         const option = document.createElement('div');
         option.className = 'dropdown-option';
@@ -200,9 +211,35 @@ function closeCounterpartyDropdown() {
     renderCounterpartyOptions(); // Reset filter
 }
 
+// Calculate timestamp cutoff for time filter
+function getTimeFilterCutoff(filterValue) {
+    if (!filterValue) return null;
+    
+    const now = Date.now() / 1000; // Current timestamp in seconds
+    const secondsPerDay = 86400;
+    const secondsPerMonth = 2592000; // 30 days
+    
+    const filters = {
+        '10d': now - (10 * secondsPerDay),
+        '20d': now - (20 * secondsPerDay),
+        '30d': now - (30 * secondsPerDay),
+        '3m': now - (3 * secondsPerMonth),
+        '6m': now - (6 * secondsPerMonth),
+        '1y': now - (365 * secondsPerDay)
+    };
+    
+    return filters[filterValue] || null;
+}
+
 // Apply filters
 function applyFilters() {
     filteredTransactions = allTransactions.filter(tx => {
+        // Time range filter
+        const timeCutoff = getTimeFilterCutoff(timeFilter.value);
+        if (timeCutoff && tx.timestamp < timeCutoff) {
+            return false;
+        }
+        
         // Direction filter
         if (directionFilter.value && tx.direction !== directionFilter.value) {
             return false;
@@ -306,7 +343,7 @@ function renderTransactions() {
                 </div>
             </td>
             <td><strong>${formatAmount(tx.amount)}</strong></td>
-            <td><span class="badge" style="background: rgba(255,255,255,0.1);">${tx.token_symbol}</span></td>
+            <td>${formatTokenSymbol(tx.token_symbol, tx.token_contract)}</td>
             <td><span class="badge badge-${tx.direction}">${tx.direction}</span></td>
             <td class="explorer-cell">
                 <a href="${getExplorerUrl(tx)}" target="_blank" class="explorer-link" title="View on ${tx.network === 'ERC' ? 'Etherscan' : 'TronScan'}">
@@ -388,10 +425,40 @@ function truncateAddress(address) {
 
 function formatAmount(amount) {
     const num = parseFloat(amount);
+    
+    // Handle exactly zero
     if (num === 0) return '0';
-    if (num < 0.000001) return num.toExponential(2);
-    if (num < 1) return num.toFixed(6);
-    return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
+    
+    // Handle very small numbers (scientific notation)
+    if (num < 0.00000001) return num.toExponential(4);
+    
+    // Handle small decimals - show up to 8 decimal places, remove trailing zeros
+    if (num < 0.01) {
+        return num.toFixed(8).replace(/\.?0+$/, '');
+    }
+    
+    // Handle values less than 1 - show 6 decimals
+    if (num < 1) return num.toFixed(6).replace(/\.?0+$/, '');
+    
+    // Handle regular numbers - show up to 6 decimals
+    return num.toLocaleString(undefined, { 
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 6 
+    });
+}
+
+function formatTokenSymbol(symbol, contractAddress) {
+    // List of well-known tokens for validation
+    const knownTokens = ['ETH', 'USDT', 'USDC', 'DAI', 'WETH', 'WBTC', 'UNI', 'LINK', 'MATIC', 'TRX', 'SHIB', 'PEPE'];
+    const isKnown = knownTokens.includes(symbol.toUpperCase());
+    
+    // If it's a known token, return normally
+    if (isKnown || symbol === 'ETH' || symbol === 'TRX') {
+        return `<span class=\"badge\" style=\"background: rgba(255,255,255,0.1);\">${symbol}</span>`;
+    }
+    
+    // For unknown tokens, add a subtle indicator
+    return `<span class=\"badge\" style=\"background: rgba(255,255,255,0.1);\" title=\"Token: ${symbol}\\nContract: ${contractAddress || 'N/A'}\\n\\nNote: This is the token symbol from the smart contract. Verify legitimacy before interacting.\">${symbol}</span>`;
 }
 
 function getExplorerUrl(tx) {
@@ -429,6 +496,19 @@ function showError(message) {
 
 // Event listeners
 
+resetFiltersBtn.addEventListener('click', () => {
+    // Reset all filters
+    timeFilter.value = '';
+    directionFilter.value = '';
+    counterpartyFilter.value = '';
+    counterpartySelected.textContent = 'All Addresses';
+    counterpartySearch.value = '';
+    renderCounterpartyOptions();
+    
+    // Re-apply filters (will show all transactions)
+    applyFilters();
+});
+
 backBtn.addEventListener('click', () => {
     window.location.href = '/';
 });
@@ -464,8 +544,8 @@ document.querySelectorAll('th[data-sort]').forEach(th => {
     });
 });
 
-// Time filter change - makes API call
-timeFilter.addEventListener('change', fetchTransactions);
+// Time filter change - auto-apply (client-side only)
+timeFilter.addEventListener('change', applyFilters);
 
 // Direction filter - auto-apply (client-side only)
 directionFilter.addEventListener('change', applyFilters);
