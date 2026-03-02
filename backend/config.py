@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     port: int = 8000
     
     # API Endpoints
-    etherscan_base_url: str = "https://api.etherscan.io/api"
+    etherscan_base_url: str = "https://api.etherscan.io/v2/api"
     trongrid_base_url: str = "https://api.trongrid.io"
     
     model_config = SettingsConfigDict(

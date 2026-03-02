@@ -30,6 +30,7 @@ class EtherscanService:
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 params = {
+                    "chainid": "1",  # Ethereum mainnet
                     "module": "account",
                     "action": "txlist",
                     "address": address,
@@ -76,6 +77,7 @@ class EtherscanService:
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 params = {
+                    "chainid": "1",  # Ethereum mainnet
                     "module": "account",
                     "action": "tokentx",
                     "address": address,

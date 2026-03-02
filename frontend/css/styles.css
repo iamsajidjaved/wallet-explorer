@@ -358,6 +358,48 @@ input[type="checkbox"] {
     accent-color: var(--accent-blue);
 }
 
+/* Searchable Select */
+.searchable-select {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.select-search {
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.select-search:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+.select-search::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.searchable-select select {
+    min-height: 120px;
+    cursor: pointer;
+}
+
+.searchable-select select option {
+    padding: 0.5rem;
+    cursor: pointer;
+}
+
+.searchable-select select option:hover {
+    background: var(--accent-blue);
+}
+
 /* Transaction Table */
 .table-container {
     background: var(--bg-card);

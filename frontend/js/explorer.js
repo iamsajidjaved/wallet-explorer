@@ -26,10 +26,9 @@ const firstSeenDisplay = document.getElementById('firstSeenDisplay');
 const lastActivityDisplay = document.getElementById('lastActivityDisplay');
 
 const timeFilter = document.getElementById('timeFilter');
-const filterERC = document.getElementById('filterERC');
-const filterTRC = document.getElementById('filterTRC');
 const directionFilter = document.getElementById('directionFilter');
 const counterpartyFilter = document.getElementById('counterpartyFilter');
+const counterpartySearch = document.getElementById('counterpartySearch');
 
 const applyFiltersBtn = document.getElementById('applyFiltersBtn');
 const resetFiltersBtn = document.getElementById('resetFiltersBtn');
@@ -108,13 +107,26 @@ function updateCounterpartyFilter() {
     // Remove the wallet address itself
     counterparties.delete(walletAddress);
 
-    // Clear and populate dropdown
+    // Store all addresses for filtering
+    window.allCounterparties = Array.from(counterparties).sort();
+    
+    // Initial render of all addresses
+    renderCounterpartyOptions();
+}
+
+// Render counterparty options based on search
+function renderCounterpartyOptions(searchTerm = '') {
+    const filteredAddresses = window.allCounterparties.filter(address => 
+        address.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
     counterpartyFilter.innerHTML = '<option value="">All Addresses</option>';
     
-    Array.from(counterparties).sort().forEach(address => {
+    filteredAddresses.forEach(address => {
         const option = document.createElement('option');
         option.value = address;
         option.textContent = truncateAddress(address);
+        option.title = address; // Show full address on hover
         counterpartyFilter.appendChild(option);
     });
 }
@@ -122,11 +134,6 @@ function updateCounterpartyFilter() {
 // Apply filters
 function applyFilters() {
     filteredTransactions = allTransactions.filter(tx => {
-        // Network filter
-        const networkMatch = (filterERC.checked && tx.network === 'ERC') || 
-                            (filterTRC.checked && tx.network === 'TRC');
-        if (!networkMatch) return false;
-
         // Direction filter
         if (directionFilter.value && tx.direction !== directionFilter.value) {
             return false;
@@ -313,10 +320,10 @@ applyFiltersBtn.addEventListener('click', applyFilters);
 
 resetFiltersBtn.addEventListener('click', () => {
     timeFilter.value = '';
-    filterERC.checked = true;
-    filterTRC.checked = true;
     directionFilter.value = '';
     counterpartyFilter.value = '';
+    counterpartySearch.value = '';
+    renderCounterpartyOptions();
     applyFilters();
 });
 
@@ -353,6 +360,11 @@ document.querySelectorAll('th[data-sort]').forEach(th => {
 
 // Time filter change
 timeFilter.addEventListener('change', fetchTransactions);
+
+// Counterparty search
+counterpartySearch.addEventListener('input', (e) => {
+    renderCounterpartyOptions(e.target.value);
+});
 
 // Initialize on load
 init();

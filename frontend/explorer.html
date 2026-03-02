@@ -62,20 +62,6 @@
                 </div>
 
                 <div class="filter-group">
-                    <label>Network</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="filterERC" value="ERC" checked>
-                            <span>ERC</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="filterTRC" value="TRC" checked>
-                            <span>TRC</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="filter-group">
                     <label for="directionFilter">Direction</label>
                     <select id="directionFilter">
                         <option value="">All</option>
@@ -86,9 +72,12 @@
 
                 <div class="filter-group">
                     <label for="counterpartyFilter">Counterparty</label>
-                    <select id="counterpartyFilter">
-                        <option value="">All Addresses</option>
-                    </select>
+                    <div class="searchable-select">
+                        <input type="text" id="counterpartySearch" class="select-search" placeholder="Search addresses...">
+                        <select id="counterpartyFilter" size="5">
+                            <option value="">All Addresses</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
