@@ -1,5 +1,6 @@
 """Transaction API endpoints"""
 import re
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
@@ -11,6 +12,9 @@ from backend.models import (
 )
 from backend.services.etherscan import etherscan_service
 from backend.services.trongrid import trongrid_service
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/api", tags=["transactions"])
@@ -66,33 +70,31 @@ async def get_transactions(
     if not is_valid:
         raise HTTPException(status_code=400, detail=message)
     
-    # Determine which APIs to call
-    fetch_eth = network == "ethereum" or True  # Always try to fetch if no specific network
-    fetch_tron = network == "tron" or True
-    
-    # Filter by networks parameter if provided
-    if networks:
-        network_list = [n.strip().upper() for n in networks.split(",")]
-        fetch_eth = "ERC" in network_list
-        fetch_tron = "TRC" in network_list
+    logger.info(f"Fetching transactions for {network} address: {address}")
     
     all_transactions = []
     
     # Fetch Ethereum transactions
-    if fetch_eth and network == "ethereum":
+    if network == "ethereum":
         try:
+            logger.info(f"Calling Etherscan service for {address}")
             eth_txs = await etherscan_service.get_all_transactions(address)
             all_transactions.extend(eth_txs)
+            logger.info(f"Fetched {len(eth_txs)} Ethereum transactions")
         except Exception as e:
-            print(f"Error fetching Ethereum transactions: {e}")
+            logger.error(f"Error fetching Ethereum transactions: {type(e).__name__}: {e}", exc_info=True)
+            # Don't fail completely, just log the error
     
     # Fetch Tron transactions
-    if fetch_tron and network == "tron":
+    if network == "tron":
         try:
+            logger.info(f"Calling TronGrid service for {address}")
             tron_txs = await trongrid_service.get_all_transactions(address)
             all_transactions.extend(tron_txs)
+            logger.info(f"Fetched {len(tron_txs)} Tron transactions")
         except Exception as e:
-            print(f"Error fetching Tron transactions: {e}")
+            logger.error(f"Error fetching Tron transactions: {type(e).__name__}: {e}", exc_info=True)
+            # Don't fail completely, just log the error
     
     # Apply time filter
     if time_filter:

@@ -1,4 +1,5 @@
 """FastAPI application entry point"""
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -6,6 +7,13 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 from backend.routers import transactions
 from backend.config import settings
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 # Create FastAPI app

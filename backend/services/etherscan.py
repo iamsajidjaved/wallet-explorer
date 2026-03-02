@@ -1,9 +1,14 @@
 """Etherscan API integration for Ethereum transactions"""
+import asyncio
 import httpx
+import logging
 from datetime import datetime
 from typing import Optional
 from backend.config import settings
 from backend.models import Transaction
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 class EtherscanService:
@@ -22,25 +27,42 @@ class EtherscanService:
         offset: int = 10000
     ) -> list[dict]:
         """Fetch normal ETH transactions"""
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            params = {
-                "module": "account",
-                "action": "txlist",
-                "address": address,
-                "startblock": start_block,
-                "endblock": end_block,
-                "page": page,
-                "offset": offset,
-                "sort": "desc",
-                "apikey": self.api_key
-            }
-            
-            response = await client.get(self.base_url, params=params)
-            data = response.json()
-            
-            if data.get("status") == "1" and data.get("result"):
-                return data["result"]
-            return []
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                params = {
+                    "module": "account",
+                    "action": "txlist",
+                    "address": address,
+                    "startblock": start_block,
+                    "endblock": end_block,
+                    "page": page,
+                    "offset": offset,
+                    "sort": "desc",
+                    "apikey": self.api_key
+                }
+                
+                logger.info(f"Fetching ETH normal transactions for {address}")
+                logger.debug(f"Etherscan URL: {self.base_url}")
+                logger.debug(f"Params: {params}")
+                
+                response = await client.get(self.base_url, params=params)
+                logger.info(f"Etherscan normal TX response status: {response.status_code}")
+                
+                data = response.json()
+                logger.debug(f"Etherscan normal TX response: {data}")
+                
+                if data.get("status") == "1" and data.get("result"):
+                    logger.info(f"Found {len(data['result'])} normal transactions")
+                    return data["result"]
+                elif data.get("status") == "0":
+                    logger.warning(f"Etherscan API returned status 0: {data.get('message')}")
+                    return []
+                else:
+                    logger.error(f"Unexpected Etherscan response: {data}")
+                    return []
+        except Exception as e:
+            logger.error(f"Error fetching normal ETH transactions: {type(e).__name__}: {e}")
+            raise
     
     async def get_erc20_transactions(
         self, 
@@ -51,33 +73,67 @@ class EtherscanService:
         offset: int = 10000
     ) -> list[dict]:
         """Fetch ERC-20 token transactions"""
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            params = {
-                "module": "account",
-                "action": "tokentx",
-                "address": address,
-                "startblock": start_block,
-                "endblock": end_block,
-                "page": page,
-                "offset": offset,
-                "sort": "desc",
-                "apikey": self.api_key
-            }
-            
-            response = await client.get(self.base_url, params=params)
-            data = response.json()
-            
-            if data.get("status") == "1" and data.get("result"):
-                return data["result"]
-            return []
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                params = {
+                    "module": "account",
+                    "action": "tokentx",
+                    "address": address,
+                    "startblock": start_block,
+                    "endblock": end_block,
+                    "page": page,
+                    "offset": offset,
+                    "sort": "desc",
+                    "apikey": self.api_key
+                }
+                
+                logger.info(f"Fetching ERC-20 token transactions for {address}")
+                logger.debug(f"Etherscan URL: {self.base_url}")
+                logger.debug(f"Params: {params}")
+                
+                response = await client.get(self.base_url, params=params)
+                logger.info(f"Etherscan ERC-20 response status: {response.status_code}")
+                
+                data = response.json()
+                logger.debug(f"Etherscan ERC-20 response: {data}")
+                
+                if data.get("status") == "1" and data.get("result"):
+                    logger.info(f"Found {len(data['result'])} ERC-20 transactions")
+                    return data["result"]
+                elif data.get("status") == "0":
+                    logger.warning(f"Etherscan API returned status 0: {data.get('message')}")
+                    return []
+                else:
+                    logger.error(f"Unexpected Etherscan response: {data}")
+                    return []
+        except Exception as e:
+            logger.error(f"Error fetching ERC-20 transactions: {type(e).__name__}: {e}")
+            raise
     
     async def get_all_transactions(self, address: str) -> list[Transaction]:
         """Fetch all transactions (normal + ERC-20) for an address"""
-        # Fetch both types of transactions in parallel
-        normal_txs, erc20_txs = await asyncio.gather(
-            self.get_normal_transactions(address),
-            self.get_erc20_transactions(address)
-        )
+        logger.info(f"Starting to fetch all transactions for Ethereum address: {address}")
+        
+        try:
+            # Fetch both types of transactions in parallel
+            normal_txs, erc20_txs = await asyncio.gather(
+                self.get_normal_transactions(address),
+                self.get_erc20_transactions(address),
+                return_exceptions=True
+            )
+            
+            # Handle exceptions from gather
+            if isinstance(normal_txs, Exception):
+                logger.error(f"Failed to fetch normal transactions: {normal_txs}")
+                normal_txs = []
+            if isinstance(erc20_txs, Exception):
+                logger.error(f"Failed to fetch ERC-20 transactions: {erc20_txs}")
+                erc20_txs = []
+                
+        except Exception as e:
+            logger.error(f"Error in asyncio.gather: {e}")
+            normal_txs = []
+            erc20_txs = []
         
         transactions = []
         
@@ -142,10 +198,9 @@ class EtherscanService:
         # Sort by timestamp descending
         transactions.sort(key=lambda x: x.timestamp, reverse=True)
         
+        logger.info(f"Total Ethereum transactions processed: {len(transactions)}")
         return transactions
 
-
-import asyncio
 
 # Global service instance
 etherscan_service = EtherscanService()
