@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorer Dashboard - Wallet Explorer</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="animated-bg"></div>
+    
+    <div class="container">
+        <header>
+            <h1 class="logo">🔗 Wallet Explorer</h1>
+            <p class="subtitle">Transaction Dashboard</p>
+        </header>
+
+        <!-- Wallet Summary Section -->
+        <section id="summarySection" style="display: none;">
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-label">Wallet Address</div>
+                    <div class="summary-value wallet-address-display" id="walletAddressDisplay"></div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Networks</div>
+                    <div class="summary-value" id="networksDisplay"></div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Total Transactions</div>
+                    <div class="summary-value" id="totalTxDisplay">0</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">First Seen</div>
+                    <div class="summary-value" style="font-size: 1.2rem;" id="firstSeenDisplay">-</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Last Activity</div>
+                    <div class="summary-value" style="font-size: 1.2rem;" id="lastActivityDisplay">-</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters Section -->
+        <section id="filtersSection" class="filters-section" style="display: none;">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">🔍 Filters</h3>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="timeFilter">Time Range</label>
+                    <select id="timeFilter">
+                        <option value="">All Time</option>
+                        <option value="10d">Last 10 Days</option>
+                        <option value="20d">Last 20 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="3m">Last 3 Months</option>
+                        <option value="6m">Last 6 Months</option>
+                        <option value="1y">Last 1 Year</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Network</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="filterERC" value="ERC" checked>
+                            <span>ERC</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="filterTRC" value="TRC" checked>
+                            <span>TRC</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label for="directionFilter">Direction</label>
+                    <select id="directionFilter">
+                        <option value="">All</option>
+                        <option value="incoming">Incoming</option>
+                        <option value="outgoing">Outgoing</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="counterpartyFilter">Counterparty</label>
+                    <select id="counterpartyFilter">
+                        <option value="">All Addresses</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                <button id="applyFiltersBtn" class="btn btn-primary" style="width: auto; padding: 0.75rem 2rem;">
+                    Apply Filters
+                </button>
+                <button id="resetFiltersBtn" class="btn btn-secondary" style="width: auto; padding: 0.75rem 2rem;">
+                    Reset
+                </button>
+                <button id="backBtn" class="btn btn-secondary" style="width: auto; padding: 0.75rem 2rem; margin-left: auto;">
+                    ← Back to Search
+                </button>
+            </div>
+        </section>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="loading">
+            <div class="loading-spinner"></div>
+            <p>Loading transactions...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" style="display: none;">
+            <div class="error-message" id="errorMessage"></div>
+            <button id="retryBtn" class="btn btn-secondary">Retry</button>
+        </div>
+
+        <!-- Transactions Table -->
+        <section id="transactionsSection" style="display: none;">
+            <div class="table-container">
+                <div class="table-header">
+                    <h3 class="table-title">📊 Transactions (<span id="filteredCount">0</span>)</h3>
+                    <div class="table-actions">
+                        <button id="exportCsvBtn" class="btn btn-secondary" style="padding: 0.5rem 1.5rem;">
+                            📥 Export CSV
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table id="transactionsTable">
+                        <thead>
+                            <tr>
+                                <th data-sort="hash">Hash</th>
+                                <th data-sort="network">Network</th>
+                                <th data-sort="datetime">Date & Time</th>
+                                <th data-sort="from">From</th>
+                                <th data-sort="to">To</th>
+                                <th data-sort="amount">Amount</th>
+                                <th data-sort="token_symbol">Token</th>
+                                <th data-sort="direction">Direction</th>
+                                <th data-sort="status">Status</th>
+                                <th data-sort="block_number">Block</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <button id="prevPageBtn" disabled>← Previous</button>
+                    <span class="page-info">
+                        Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
+                    </span>
+                    <button id="nextPageBtn" disabled>Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">📭</div>
+            <h3>No Transactions Found</h3>
+            <p style="margin-top: 1rem;">Try adjusting your filters or search for a different wallet address.</p>
+        </div>
+    </div>
+
+    <script src="/static/js/explorer.js"></script>
+</body>
+</html>

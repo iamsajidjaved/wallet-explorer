@@ -1,0 +1,358 @@
+// Explorer Dashboard JavaScript
+
+// State management
+let allTransactions = [];
+let filteredTransactions = [];
+let currentPage = 1;
+const ITEMS_PER_PAGE = 50;
+let currentSort = { field: 'timestamp', direction: 'desc' };
+
+// Get wallet address from URL
+const urlParams = new URLSearchParams(window.location.search);
+const walletAddress = urlParams.get('address');
+
+// DOM Elements
+const summarySection = document.getElementById('summarySection');
+const filtersSection = document.getElementById('filtersSection');
+const transactionsSection = document.getElementById('transactionsSection');
+const loadingState = document.getElementById('loadingState');
+const errorState = document.getElementById('errorState');
+const emptyState = document.getElementById('emptyState');
+
+const walletAddressDisplay = document.getElementById('walletAddressDisplay');
+const networksDisplay = document.getElementById('networksDisplay');
+const totalTxDisplay = document.getElementById('totalTxDisplay');
+const firstSeenDisplay = document.getElementById('firstSeenDisplay');
+const lastActivityDisplay = document.getElementById('lastActivityDisplay');
+
+const timeFilter = document.getElementById('timeFilter');
+const filterERC = document.getElementById('filterERC');
+const filterTRC = document.getElementById('filterTRC');
+const directionFilter = document.getElementById('directionFilter');
+const counterpartyFilter = document.getElementById('counterpartyFilter');
+
+const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+const backBtn = document.getElementById('backBtn');
+const exportCsvBtn = document.getElementById('exportCsvBtn');
+
+const transactionsTBody = document.getElementById('transactionsTBody');
+const filteredCount = document.getElementById('filteredCount');
+const currentPageSpan = document.getElementById('currentPage');
+const totalPagesSpan = document.getElementById('totalPages');
+const prevPageBtn = document.getElementById('prevPageBtn');
+const nextPageBtn = document.getElementById('nextPageBtn');
+
+// Initialize
+async function init() {
+    if (!walletAddress) {
+        window.location.href = '/';
+        return;
+    }
+
+    await fetchTransactions();
+}
+
+// Fetch transactions from API
+async function fetchTransactions() {
+    showLoading();
+
+    try {
+        const timeParam = timeFilter.value ? `&time_filter=${timeFilter.value}` : '';
+        const response = await fetch(`/api/transactions/${walletAddress}?${timeParam}`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch transactions');
+        }
+
+        const data = await response.json();
+        
+        allTransactions = data.transactions;
+        filteredTransactions = [...allTransactions];
+
+        updateSummary(data);
+        updateCounterpartyFilter();
+        applyFilters();
+        
+        hideLoading();
+        showContent();
+    } catch (error) {
+        console.error('Error fetching transactions:', error);
+        showError('Failed to load transactions. Please try again.');
+    }
+}
+
+// Update summary section
+function updateSummary(data) {
+    walletAddressDisplay.textContent = data.wallet_address;
+    
+    const networkBadges = data.networks.map(net => 
+        `<span class="badge badge-${net.toLowerCase()}">${net}</span>`
+    ).join(' ');
+    networksDisplay.innerHTML = networkBadges;
+    
+    totalTxDisplay.textContent = data.total_transactions.toLocaleString();
+    firstSeenDisplay.textContent = data.first_seen || '-';
+    lastActivityDisplay.textContent = data.last_activity || '-';
+}
+
+// Update counterparty filter dropdown
+function updateCounterpartyFilter() {
+    const counterparties = new Set();
+    
+    allTransactions.forEach(tx => {
+        counterparties.add(tx.from);
+        counterparties.add(tx.to);
+    });
+
+    // Remove the wallet address itself
+    counterparties.delete(walletAddress);
+
+    // Clear and populate dropdown
+    counterpartyFilter.innerHTML = '<option value="">All Addresses</option>';
+    
+    Array.from(counterparties).sort().forEach(address => {
+        const option = document.createElement('option');
+        option.value = address;
+        option.textContent = truncateAddress(address);
+        counterpartyFilter.appendChild(option);
+    });
+}
+
+// Apply filters
+function applyFilters() {
+    filteredTransactions = allTransactions.filter(tx => {
+        // Network filter
+        const networkMatch = (filterERC.checked && tx.network === 'ERC') || 
+                            (filterTRC.checked && tx.network === 'TRC');
+        if (!networkMatch) return false;
+
+        // Direction filter
+        if (directionFilter.value && tx.direction !== directionFilter.value) {
+            return false;
+        }
+
+        // Counterparty filter
+        if (counterpartyFilter.value) {
+            if (tx.from !== counterpartyFilter.value && tx.to !== counterpartyFilter.value) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    currentPage = 1;
+    renderTransactions();
+}
+
+// Sort transactions
+function sortTransactions(field) {
+    if (currentSort.field === field) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.field = field;
+        currentSort.direction = 'desc';
+    }
+
+    filteredTransactions.sort((a, b) => {
+        let aVal = a[field];
+        let bVal = b[field];
+
+        // Handle numeric fields
+        if (field === 'timestamp' || field === 'block_number') {
+            aVal = Number(aVal);
+            bVal = Number(bVal);
+        }
+
+        // Handle string fields
+        if (typeof aVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+
+        if (currentSort.direction === 'asc') {
+            return aVal > bVal ? 1 : -1;
+        } else {
+            return aVal < bVal ? 1 : -1;
+        }
+    });
+
+    renderTransactions();
+}
+
+// Render transactions table
+function renderTransactions() {
+    const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const pageTransactions = filteredTransactions.slice(startIndex, endIndex);
+
+    filteredCount.textContent = filteredTransactions.length.toLocaleString();
+    currentPageSpan.textContent = currentPage;
+    totalPagesSpan.textContent = totalPages || 1;
+
+    prevPageBtn.disabled = currentPage === 1;
+    nextPageBtn.disabled = currentPage >= totalPages;
+
+    if (filteredTransactions.length === 0) {
+        transactionsSection.style.display = 'none';
+        emptyState.style.display = 'block';
+        return;
+    }
+
+    emptyState.style.display = 'none';
+    transactionsSection.style.display = 'block';
+
+    transactionsTBody.innerHTML = pageTransactions.map(tx => `
+        <tr>
+            <td>
+                <a href="${getExplorerUrl(tx)}" target="_blank" class="hash-link">
+                    ${truncateHash(tx.hash)}
+                </a>
+            </td>
+            <td><span class="badge badge-${tx.network.toLowerCase()}">${tx.network}</span></td>
+            <td>${tx.datetime}</td>
+            <td><span class="address" title="${tx.from}">${truncateAddress(tx.from)}</span></td>
+            <td><span class="address" title="${tx.to}">${truncateAddress(tx.to)}</span></td>
+            <td><strong>${formatAmount(tx.amount)}</strong></td>
+            <td><span class="badge" style="background: rgba(255,255,255,0.1);">${tx.token_symbol}</span></td>
+            <td><span class="badge badge-${tx.direction}">${tx.direction}</span></td>
+            <td>${tx.status}</td>
+            <td>${tx.block_number.toLocaleString()}</td>
+        </tr>
+    `).join('');
+}
+
+// Export to CSV
+function exportToCSV() {
+    const headers = [
+        'Hash', 'Network', 'Date & Time', 'From', 'To', 'Amount', 
+        'Token', 'Direction', 'Status', 'Block Number', 'Gas Fee'
+    ];
+
+    const rows = filteredTransactions.map(tx => [
+        tx.hash,
+        tx.network,
+        tx.datetime,
+        tx.from,
+        tx.to,
+        tx.amount,
+        tx.token_symbol,
+        tx.direction,
+        tx.status,
+        tx.block_number,
+        tx.gas_fee || 'N/A'
+    ]);
+
+    let csv = headers.join(',') + '\n';
+    csv += rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transactions_${walletAddress}_${Date.now()}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// Helper functions
+function truncateHash(hash) {
+    return `${hash.substring(0, 10)}...${hash.substring(hash.length - 8)}`;
+}
+
+function truncateAddress(address) {
+    if (address.length <= 16) return address;
+    return `${address.substring(0, 8)}...${address.substring(address.length - 6)}`;
+}
+
+function formatAmount(amount) {
+    const num = parseFloat(amount);
+    if (num === 0) return '0';
+    if (num < 0.000001) return num.toExponential(2);
+    if (num < 1) return num.toFixed(6);
+    return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
+}
+
+function getExplorerUrl(tx) {
+    if (tx.network === 'ERC') {
+        return `https://etherscan.io/tx/${tx.hash}`;
+    } else {
+        return `https://tronscan.org/#/transaction/${tx.hash}`;
+    }
+}
+
+function showLoading() {
+    loadingState.style.display = 'block';
+    summarySection.style.display = 'none';
+    filtersSection.style.display = 'none';
+    transactionsSection.style.display = 'none';
+    errorState.style.display = 'none';
+    emptyState.style.display = 'none';
+}
+
+function hideLoading() {
+    loadingState.style.display = 'none';
+}
+
+function showContent() {
+    summarySection.style.display = 'block';
+    filtersSection.style.display = 'block';
+    transactionsSection.style.display = 'block';
+}
+
+function showError(message) {
+    hideLoading();
+    errorState.style.display = 'block';
+    document.getElementById('errorMessage').textContent = message;
+}
+
+// Event listeners
+applyFiltersBtn.addEventListener('click', applyFilters);
+
+resetFiltersBtn.addEventListener('click', () => {
+    timeFilter.value = '';
+    filterERC.checked = true;
+    filterTRC.checked = true;
+    directionFilter.value = '';
+    counterpartyFilter.value = '';
+    applyFilters();
+});
+
+backBtn.addEventListener('click', () => {
+    window.location.href = '/';
+});
+
+exportCsvBtn.addEventListener('click', exportToCSV);
+
+prevPageBtn.addEventListener('click', () => {
+    if (currentPage > 1) {
+        currentPage--;
+        renderTransactions();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+});
+
+nextPageBtn.addEventListener('click', () => {
+    const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+    if (currentPage < totalPages) {
+        currentPage++;
+        renderTransactions();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+});
+
+// Sort table headers
+document.querySelectorAll('th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+        const field = th.dataset.sort;
+        sortTransactions(field);
+    });
+});
+
+// Time filter change
+timeFilter.addEventListener('change', fetchTransactions);
+
+// Initialize on load
+init();
