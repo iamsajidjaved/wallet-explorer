@@ -35,7 +35,6 @@ const counterpartyOptions = document.getElementById('counterpartyOptions');
 const counterpartySelected = document.getElementById('counterpartySelected');
 
 const headerBackBtn = document.getElementById('headerBackBtn');
-const backBtn = document.getElementById('backBtn');
 const resetFiltersBtn = document.getElementById('resetFiltersBtn');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
 
@@ -507,10 +506,6 @@ resetFiltersBtn.addEventListener('click', () => {
     
     // Re-apply filters (will show all transactions)
     applyFilters();
-});
-
-backBtn.addEventListener('click', () => {
-    window.location.href = '/';
 });
 
 headerBackBtn.addEventListener('click', () => {
