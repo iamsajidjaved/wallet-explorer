@@ -116,6 +116,11 @@ function updateCounterpartyFilter() {
 
 // Render counterparty options based on search
 function renderCounterpartyOptions(searchTerm = '') {
+    // Safety check: ensure allCounterparties exists
+    if (!window.allCounterparties) {
+        window.allCounterparties = [];
+    }
+    
     const filteredAddresses = window.allCounterparties.filter(address => 
         address.toLowerCase().includes(searchTerm.toLowerCase())
     );
