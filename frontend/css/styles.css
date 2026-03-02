@@ -358,46 +358,143 @@ input[type="checkbox"] {
     accent-color: var(--accent-blue);
 }
 
-/* Searchable Select */
-.searchable-select {
+/* Custom Select (Select2-style) */
+.custom-select-wrapper {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
 }
 
-.select-search {
+.custom-select-trigger {
     padding: 0.75rem;
     background: var(--bg-secondary);
     border: 2px solid var(--border-color);
     border-radius: 8px;
     color: var(--text-primary);
     font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.custom-select-trigger:hover {
+    border-color: var(--accent-blue);
+}
+
+.custom-select-trigger.active {
+    border-color: var(--accent-blue);
+    border-radius: 8px 8px 0 0;
+}
+
+.custom-select-trigger .arrow {
+    font-size: 0.7rem;
+    transition: transform 0.3s ease;
+}
+
+.custom-select-trigger.active .arrow {
+    transform: rotate(180deg);
+}
+
+.custom-select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border: 2px solid var(--accent-blue);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    z-index: 1000;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.custom-select-dropdown.active {
+    max-height: 300px;
+    opacity: 1;
+    overflow-y: auto;
+}
+
+.dropdown-search {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    z-index: 1;
+}
+
+.dropdown-search input {
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
     transition: all 0.3s ease;
 }
 
-.select-search:focus {
+.dropdown-search input:focus {
     outline: none;
     border-color: var(--accent-blue);
 }
 
-.select-search::placeholder {
+.dropdown-search input::placeholder {
     color: var(--text-secondary);
     opacity: 0.7;
 }
 
-.searchable-select select {
-    min-height: 120px;
-    cursor: pointer;
+.dropdown-options {
+    max-height: 200px;
+    overflow-y: auto;
 }
 
-.searchable-select select option {
-    padding: 0.5rem;
+.dropdown-option {
+    padding: 0.75rem;
     cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.searchable-select select option:hover {
+.dropdown-option:hover {
     background: var(--accent-blue);
+}
+
+.dropdown-option.selected {
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.dropdown-option.hidden {
+    display: none;
+}
+
+/* Scrollbar styling for dropdown */
+.custom-select-dropdown::-webkit-scrollbar,
+.dropdown-options::-webkit-scrollbar {
+    width: 8px;
+}
+
+.custom-select-dropdown::-webkit-scrollbar-track,
+.dropdown-options::-webkit-scrollbar-track {
+    background: var(--bg-card);
+}
+
+.custom-select-dropdown::-webkit-scrollbar-thumb,
+.dropdown-options::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.custom-select-dropdown::-webkit-scrollbar-thumb:hover,
+.dropdown-options::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
 }
 
 /* Transaction Table */

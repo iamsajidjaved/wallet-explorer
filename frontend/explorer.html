@@ -72,12 +72,21 @@
 
                 <div class="filter-group">
                     <label for="counterpartyFilter">Counterparty</label>
-                    <div class="searchable-select">
-                        <input type="text" id="counterpartySearch" class="select-search" placeholder="Search addresses...">
-                        <select id="counterpartyFilter" size="5">
-                            <option value="">All Addresses</option>
-                        </select>
+                    <div class="custom-select-wrapper">
+                        <div class="custom-select-trigger" id="counterpartyTrigger">
+                            <span id="counterpartySelected">All Addresses</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="custom-select-dropdown" id="counterpartyDropdown">
+                            <div class="dropdown-search">
+                                <input type="text" id="counterpartySearch" placeholder="Search addresses...">
+                            </div>
+                            <div class="dropdown-options" id="counterpartyOptions">
+                                <div class="dropdown-option" data-value="">All Addresses</div>
+                            </div>
+                        </div>
                     </div>
+                    <input type="hidden" id="counterpartyFilter" value="">
                 </div>
             </div>
 

@@ -29,6 +29,10 @@ const timeFilter = document.getElementById('timeFilter');
 const directionFilter = document.getElementById('directionFilter');
 const counterpartyFilter = document.getElementById('counterpartyFilter');
 const counterpartySearch = document.getElementById('counterpartySearch');
+const counterpartyTrigger = document.getElementById('counterpartyTrigger');
+const counterpartyDropdown = document.getElementById('counterpartyDropdown');
+const counterpartyOptions = document.getElementById('counterpartyOptions');
+const counterpartySelected = document.getElementById('counterpartySelected');
 
 const applyFiltersBtn = document.getElementById('applyFiltersBtn');
 const resetFiltersBtn = document.getElementById('resetFiltersBtn');
@@ -58,13 +62,20 @@ async function fetchTransactions() {
 
     try {
         const timeParam = timeFilter.value ? `&time_filter=${timeFilter.value}` : '';
-        const response = await fetch(`/api/transactions/${walletAddress}?${timeParam}`);
+        const url = `/api/transactions/${walletAddress}?${timeParam}`;
+        console.log('Fetching from URL:', url);
+        
+        const response = await fetch(url);
+        console.log('Response status:', response.status);
         
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
             throw new Error('Failed to fetch transactions');
         }
 
         const data = await response.json();
+        console.log('Data received:', data);
         
         allTransactions = data.transactions;
         filteredTransactions = [...allTransactions];
@@ -125,15 +136,69 @@ function renderCounterpartyOptions(searchTerm = '') {
         address.toLowerCase().includes(searchTerm.toLowerCase())
     );
     
-    counterpartyFilter.innerHTML = '<option value="">All Addresses</option>';
+    counterpartyOptions.innerHTML = '<div class="dropdown-option" data-value="">All Addresses</div>';
     
     filteredAddresses.forEach(address => {
-        const option = document.createElement('option');
-        option.value = address;
+        const option = document.createElement('div');
+        option.className = 'dropdown-option';
+        option.setAttribute('data-value', address);
         option.textContent = truncateAddress(address);
         option.title = address; // Show full address on hover
-        counterpartyFilter.appendChild(option);
+        counterpartyOptions.appendChild(option);
     });
+    
+    // Attach click handlers to options
+    attachOptionHandlers();
+}
+
+// Attach click handlers to dropdown options
+function attachOptionHandlers() {
+    const options = counterpartyOptions.querySelectorAll('.dropdown-option');
+    options.forEach(option => {
+        option.addEventListener('click', () => {
+            const value = option.getAttribute('data-value');
+            const text = option.textContent;
+            
+            // Update hidden input and selected text
+            counterpartyFilter.value = value;
+            counterpartySelected.textContent = text;
+            
+            // Update selected state
+            options.forEach(opt => opt.classList.remove('selected'));
+            option.classList.add('selected');
+            
+            // Close dropdown
+            closeCounterpartyDropdown();
+            
+            // Apply filters
+            applyFilters();
+        });
+    });
+}
+
+// Toggle dropdown
+function toggleCounterpartyDropdown() {
+    const isActive = counterpartyDropdown.classList.contains('active');
+    if (isActive) {
+        closeCounterpartyDropdown();
+    } else {
+        openCounterpartyDropdown();
+    }
+}
+
+// Open dropdown
+function openCounterpartyDropdown() {
+    counterpartyDropdown.classList.add('active');
+    counterpartyTrigger.classList.add('active');
+    counterpartySearch.focus();
+}
+
+// Close dropdown
+function closeCounterpartyDropdown() {
+    counterpartyDropdown.classList.remove('active');
+    counterpartyTrigger.classList.remove('active');
+    counterpartySearch.value = '';
+    renderCounterpartyOptions(); // Reset filter
 }
 
 // Apply filters
@@ -327,6 +392,7 @@ resetFiltersBtn.addEventListener('click', () => {
     timeFilter.value = '';
     directionFilter.value = '';
     counterpartyFilter.value = '';
+    counterpartySelected.textContent = 'All Addresses';
     counterpartySearch.value = '';
     renderCounterpartyOptions();
     applyFilters();
@@ -366,9 +432,29 @@ document.querySelectorAll('th[data-sort]').forEach(th => {
 // Time filter change
 timeFilter.addEventListener('change', fetchTransactions);
 
-// Counterparty search
-counterpartySearch.addEventListener('input', (e) => {
-    renderCounterpartyOptions(e.target.value);
+// Custom dropdown handlers
+counterpartyTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleCounterpartyDropdown();
+});
+
+// Counterparty search - with safety check
+if (counterpartySearch) {
+    counterpartySearch.addEventListener('input', (e) => {
+        renderCounterpartyOptions(e.target.value);
+    });
+    
+    // Prevent dropdown from closing when clicking search input
+    counterpartySearch.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    if (!counterpartyDropdown.contains(e.target) && e.target !== counterpartyTrigger) {
+        closeCounterpartyDropdown();
+    }
 });
 
 // Initialize on load
