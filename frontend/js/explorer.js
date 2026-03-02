@@ -37,6 +37,7 @@ const counterpartySelected = document.getElementById('counterpartySelected');
 const applyFiltersBtn = document.getElementById('applyFiltersBtn');
 const resetFiltersBtn = document.getElementById('resetFiltersBtn');
 const backBtn = document.getElementById('backBtn');
+const headerBackBtn = document.getElementById('headerBackBtn');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
 
 const transactionsTBody = document.getElementById('transactionsTBody');
@@ -399,6 +400,10 @@ resetFiltersBtn.addEventListener('click', () => {
 });
 
 backBtn.addEventListener('click', () => {
+    window.location.href = '/';
+});
+
+headerBackBtn.addEventListener('click', () => {
     window.location.href = '/';
 });
 

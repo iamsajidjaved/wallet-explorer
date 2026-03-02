@@ -150,5 +150,20 @@ walletInput.addEventListener('input', handleInputChange);
 walletForm.addEventListener('submit', handleSubmit);
 exampleBtns.forEach(btn => btn.addEventListener('click', handleExampleClick));
 
+// Reset button state when page is shown (e.g., when using browser back button)
+window.addEventListener('pageshow', (event) => {
+    // Reset button to original state
+    submitBtn.innerHTML = 'Get Transactions';
+    
+    // Re-validate current input to set proper button state
+    const address = walletInput.value.trim();
+    if (address) {
+        const result = validateAddress(address);
+        submitBtn.disabled = !result.valid;
+    } else {
+        submitBtn.disabled = true;
+    }
+});
+
 // Focus input on load
 walletInput.focus();
