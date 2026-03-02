@@ -34,10 +34,8 @@ const counterpartyDropdown = document.getElementById('counterpartyDropdown');
 const counterpartyOptions = document.getElementById('counterpartyOptions');
 const counterpartySelected = document.getElementById('counterpartySelected');
 
-const applyFiltersBtn = document.getElementById('applyFiltersBtn');
-const resetFiltersBtn = document.getElementById('resetFiltersBtn');
-const backBtn = document.getElementById('backBtn');
 const headerBackBtn = document.getElementById('headerBackBtn');
+const backBtn = document.getElementById('backBtn');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
 
 const transactionsTBody = document.getElementById('transactionsTBody');
@@ -430,17 +428,6 @@ function showError(message) {
 }
 
 // Event listeners
-applyFiltersBtn.addEventListener('click', applyFilters);
-
-resetFiltersBtn.addEventListener('click', () => {
-    timeFilter.value = '';
-    directionFilter.value = '';
-    counterpartyFilter.value = '';
-    counterpartySelected.textContent = 'All Addresses';
-    counterpartySearch.value = '';
-    renderCounterpartyOptions();
-    applyFilters();
-});
 
 backBtn.addEventListener('click', () => {
     window.location.href = '/';
@@ -477,8 +464,11 @@ document.querySelectorAll('th[data-sort]').forEach(th => {
     });
 });
 
-// Time filter change
+// Time filter change - makes API call
 timeFilter.addEventListener('change', fetchTransactions);
+
+// Direction filter - auto-apply (client-side only)
+directionFilter.addEventListener('change', applyFilters);
 
 // Custom dropdown handlers
 counterpartyTrigger.addEventListener('click', (e) => {
