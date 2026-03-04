@@ -2,7 +2,7 @@
 import asyncio
 import httpx
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from backend.config import settings
 from backend.models import Transaction
@@ -153,7 +153,7 @@ class EtherscanService:
                     hash=tx["hash"],
                     network="ERC",
                     timestamp=int(tx["timeStamp"]),
-                    datetime=datetime.fromtimestamp(int(tx["timeStamp"])).strftime("%Y-%m-%d %H:%M:%S"),
+                    datetime=datetime.utcfromtimestamp(int(tx["timeStamp"])).strftime("%Y-%m-%d %H:%M:%S"),
                     **{"from": tx["from"], "to": tx["to"]},
                     amount=f"{amount_eth:.8f}",
                     token_symbol="ETH",
@@ -187,7 +187,7 @@ class EtherscanService:
                     hash=tx["hash"],
                     network="ERC",
                     timestamp=int(tx["timeStamp"]),
-                    datetime=datetime.fromtimestamp(int(tx["timeStamp"])).strftime("%Y-%m-%d %H:%M:%S"),
+                    datetime=datetime.utcfromtimestamp(int(tx["timeStamp"])).strftime("%Y-%m-%d %H:%M:%S"),
                     **{"from": tx["from"], "to": tx["to"]},
                     amount=f"{amount:.8f}",
                     token_symbol=token_symbol,

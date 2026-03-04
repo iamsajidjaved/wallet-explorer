@@ -1,6 +1,7 @@
 """TronGrid API integration for Tron transactions"""
+import asyncio
 import httpx
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from backend.config import settings
 from backend.models import Transaction
@@ -88,7 +89,7 @@ class TronGridService:
     ) -> list[Transaction]:
         """Fetch all transactions (TRX + TRC-20) for an address"""
         # Fetch both types in parallel, pushing date bounds to the API
-        trx_txs, trc20_txs = await asyncio.gather(
+        results = await asyncio.gather(
             self.get_trx_transactions(
                 address,
                 min_timestamp=min_timestamp_ms,
@@ -99,7 +100,20 @@ class TronGridService:
                 min_timestamp=min_timestamp_ms,
                 max_timestamp=max_timestamp_ms,
             ),
+            return_exceptions=True,
         )
+
+        trx_txs   = results[0] if not isinstance(results[0], Exception) else []
+        trc20_txs = results[1] if not isinstance(results[1], Exception) else []
+
+        if isinstance(results[0], Exception):
+            print(f"TRX fetch error: {results[0]}")
+        if isinstance(results[1], Exception):
+            print(f"TRC-20 fetch error: {results[1]}")
+
+        # Derive hard second-level bounds for Python-level filtering
+        from_ts_s: Optional[int] = min_timestamp_ms // 1000 if min_timestamp_ms else None
+        to_ts_s:   Optional[int] = max_timestamp_ms // 1000 if max_timestamp_ms else None
         
         transactions = []
         
@@ -109,16 +123,22 @@ class TronGridService:
                 amount = int(tx.get("value", "0")) / (10 ** int(tx.get("token_info", {}).get("decimals", 6)))
                 timestamp_ms = tx.get("block_timestamp", 0)
                 timestamp = timestamp_ms // 1000 if timestamp_ms else 0
-                
+
+                # Hard Python-level date filter (API params are best-effort)
+                if from_ts_s is not None and timestamp < from_ts_s:
+                    continue
+                if to_ts_s is not None and timestamp > to_ts_s:
+                    continue
+
                 from_addr = tx.get("from", "")
                 to_addr = tx.get("to", "")
                 direction = "outgoing" if from_addr.lower() == address.lower() else "incoming"
-                
+
                 transactions.append(Transaction(
                     hash=tx.get("transaction_id", ""),
                     network="TRC",
                     timestamp=timestamp,
-                    datetime=datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S") if timestamp else "N/A",
+                    datetime=datetime.utcfromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S") if timestamp else "N/A",
                     **{"from": from_addr, "to": to_addr},
                     amount=f"{amount:.8f}",
                     token_symbol=tx.get("token_info", {}).get("symbol", "UNKNOWN"),
@@ -138,30 +158,36 @@ class TronGridService:
                 # Only process transfer transactions
                 if tx.get("raw_data", {}).get("contract", [{}])[0].get("type") != "TransferContract":
                     continue
-                
+
                 timestamp_ms = tx.get("block_timestamp", 0)
                 timestamp = timestamp_ms // 1000 if timestamp_ms else 0
-                
+
+                # Hard Python-level date filter
+                if from_ts_s is not None and timestamp < from_ts_s:
+                    continue
+                if to_ts_s is not None and timestamp > to_ts_s:
+                    continue
+
                 contract_data = tx.get("raw_data", {}).get("contract", [{}])[0]
                 value_data = contract_data.get("parameter", {}).get("value", {})
-                
+
                 amount_sun = value_data.get("amount", 0)
                 amount_trx = amount_sun / 1_000_000  # Convert SUN to TRX
-                
+
                 from_addr = self._convert_hex_to_base58(value_data.get("owner_address", ""))
                 to_addr = self._convert_hex_to_base58(value_data.get("to_address", ""))
-                
+
                 direction = "outgoing" if from_addr.lower() == address.lower() else "incoming"
-                
+
                 # Calculate fee
                 fee_sun = tx.get("ret", [{}])[0].get("fee", 0)
                 fee_trx = fee_sun / 1_000_000
-                
+
                 transactions.append(Transaction(
                     hash=tx.get("txID", ""),
                     network="TRC",
                     timestamp=timestamp,
-                    datetime=datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S") if timestamp else "N/A",
+                    datetime=datetime.utcfromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S") if timestamp else "N/A",
                     **{"from": from_addr, "to": to_addr},
                     amount=f"{amount_trx:.8f}",
                     token_symbol="TRX",
@@ -196,7 +222,6 @@ class TronGridService:
         return hex_address
 
 
-import asyncio
-
 # Global service instance
 trongrid_service = TronGridService()
+
