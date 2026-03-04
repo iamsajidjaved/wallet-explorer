@@ -10,8 +10,22 @@ let currentSort = { field: 'timestamp', direction: 'desc' };
 // Get params from URL
 const urlParams = new URLSearchParams(window.location.search);
 const walletAddress = urlParams.get('address');
-const fromDate = urlParams.get('from_date'); // YYYY-MM-DD
-const toDate = urlParams.get('to_date');     // YYYY-MM-DD
+
+// Read date range: prefer URL params, fall back to sessionStorage
+// (sessionStorage is written by wallet.js before redirect as a safety net)
+let fromDate = urlParams.get('from_date') || sessionStorage.getItem('wx_from_date') || null;
+let toDate   = urlParams.get('to_date')   || sessionStorage.getItem('wx_to_date')   || null;
+
+// Treat empty string as null
+if (!fromDate) fromDate = null;
+if (!toDate)   toDate   = null;
+
+console.log('[explorer] URL search:', window.location.search);
+console.log('[explorer] fromDate resolved:', fromDate, '| toDate resolved:', toDate);
+
+// Clear sessionStorage after reading so stale dates don't persist on future visits
+sessionStorage.removeItem('wx_from_date');
+sessionStorage.removeItem('wx_to_date');
 
 // DOM Elements
 const summarySection = document.getElementById('summarySection');

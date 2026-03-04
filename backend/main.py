@@ -1,7 +1,8 @@
 """FastAPI application entry point"""
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
@@ -34,6 +35,16 @@ app.add_middleware(
 
 # Include routers
 app.include_router(transactions.router)
+
+# Middleware: disable caching on all static JS/CSS so browsers always fetch fresh files
+@app.middleware("http")
+async def no_cache_static(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 # Mount static files
 frontend_path = Path(__file__).parent.parent / "frontend"

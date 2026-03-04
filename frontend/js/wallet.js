@@ -119,10 +119,15 @@ async function handleSubmit(e) {
         if (data.valid) {
             // Build redirect URL with optional date range
             const params = new URLSearchParams({ address });
-            const fromDate = fromDateInput.value;
-            const toDate = toDateInput.value;
+            const fromDate = fromDateInput ? fromDateInput.value : '';
+            const toDate   = toDateInput   ? toDateInput.value   : '';
+            console.log('[wallet] fromDateInput.value:', fromDate);
+            console.log('[wallet] toDateInput.value:',   toDate);
             if (fromDate) params.set('from_date', fromDate);
-            if (toDate) params.set('to_date', toDate);
+            if (toDate)   params.set('to_date',   toDate);
+            // Also persist to sessionStorage as a safety net
+            sessionStorage.setItem('wx_from_date', fromDate);
+            sessionStorage.setItem('wx_to_date',   toDate);
             const redirectUrl = `/explorer?${params.toString()}`;
             console.log('[wallet] Redirecting to:', redirectUrl);
             window.location.href = redirectUrl;
