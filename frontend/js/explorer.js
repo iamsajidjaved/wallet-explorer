@@ -62,8 +62,12 @@ async function fetchTransactions() {
     showLoading();
 
     try {
-        // Fetch ALL transactions without time filtering (do it client-side)
-        const url = `/api/transactions/${walletAddress}`;
+        // Build URL with optional date range params
+        const params = new URLSearchParams();
+        if (fromDate) params.set('from_date', fromDate);
+        if (toDate)   params.set('to_date',   toDate);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        const url = `/api/transactions/${walletAddress}${query}`;
         console.log('Fetching from URL:', url);
         
         const response = await fetch(url);
@@ -84,7 +88,7 @@ async function fetchTransactions() {
         updateSummary(data);
         updateCounterpartyFilter();
         showDateRangeBanner();
-        applyFilters();
+        applyFilters(); // also calls updateSummaryFromFiltered()
         
         hideLoading();
         showContent();
@@ -94,7 +98,7 @@ async function fetchTransactions() {
     }
 }
 
-// Update summary section
+// Update summary section — static parts (wallet address, networks) set once
 function updateSummary(data) {
     walletAddressDisplay.textContent = data.wallet_address;
     
@@ -102,10 +106,37 @@ function updateSummary(data) {
         `<span class="badge badge-${net.toLowerCase()}">${net}</span>`
     ).join(' ');
     networksDisplay.innerHTML = networkBadges;
-    
-    totalTxDisplay.textContent = data.total_transactions.toLocaleString();
-    firstSeenDisplay.textContent = data.first_seen || '-';
-    lastActivityDisplay.textContent = data.last_activity || '-';
+}
+
+// Update summary stats that depend on the current filtered set
+function updateSummaryFromFiltered() {
+    const txs = filteredTransactions;
+
+    totalTxDisplay.textContent = txs.length.toLocaleString();
+
+    if (txs.length === 0) {
+        firstSeenDisplay.textContent = '-';
+        lastActivityDisplay.textContent = '-';
+        return;
+    }
+
+    let minTs = Infinity;
+    let maxTs = -Infinity;
+    txs.forEach(tx => {
+        const ts = Number(tx.timestamp);
+        if (ts < minTs) minTs = ts;
+        if (ts > maxTs) maxTs = ts;
+    });
+
+    firstSeenDisplay.textContent = formatTimestampDate(minTs);
+    lastActivityDisplay.textContent = formatTimestampDate(maxTs);
+}
+
+// Format a unix timestamp to a readable date string
+function formatTimestampDate(ts) {
+    if (!ts || !isFinite(ts)) return '-';
+    const d = new Date(ts * 1000);
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 // Update counterparty filter dropdown
@@ -226,17 +257,9 @@ function showDateRangeBanner() {
     }
 }
 
-// Apply filters
+// Apply filters (direction + counterparty only; date range is handled by the API)
 function applyFilters() {
-    // Precompute date timestamps once
-    const fromTs = fromDate ? new Date(fromDate + 'T00:00:00').getTime() / 1000 : null;
-    const toTs = toDate ? new Date(toDate + 'T23:59:59').getTime() / 1000 : null;
-
     filteredTransactions = allTransactions.filter(tx => {
-        // Date range filter (from URL params)
-        if (fromTs && tx.timestamp < fromTs) return false;
-        if (toTs && tx.timestamp > toTs) return false;
-
         // Direction filter
         if (directionFilter.value && tx.direction !== directionFilter.value) {
             return false;
@@ -253,6 +276,7 @@ function applyFilters() {
     });
 
     currentPage = 1;
+    updateSummaryFromFiltered();
     renderTransactions();
 }
 
@@ -339,7 +363,7 @@ function renderTransactions() {
                     </button>
                 </div>
             </td>
-            <td><strong>${formatAmount(tx.amount)}</strong></td>
+            <td><strong title="${tx.amount}">${formatAmount(tx.amount)}</strong></td>
             <td>${formatTokenSymbol(tx.token_symbol, tx.token_contract)}</td>
             <td><span class="badge badge-${tx.direction}">${tx.direction}</span></td>
             <td class="explorer-cell">
@@ -420,27 +444,38 @@ function truncateAddress(address) {
     return `${address.substring(0, 8)}...${address.substring(address.length - 6)}`;
 }
 
+// Convert integer to Unicode superscript string
+function toSuperscript(n) {
+    const map = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+    return String(n).split('').map(c => map[+c]).join('');
+}
+
 function formatAmount(amount) {
-    const num = parseFloat(amount);
-    
-    // Handle exactly zero
-    if (num === 0) return '0';
-    
-    // Handle very small numbers (scientific notation)
-    if (num < 0.00000001) return num.toExponential(4);
-    
-    // Handle small decimals - show up to 8 decimal places, remove trailing zeros
-    if (num < 0.01) {
-        return num.toFixed(8).replace(/\.?0+$/, '');
+    const str = String(amount).trim();
+
+    // Use raw string to avoid float precision loss for very large numbers
+    const dotIdx = str.indexOf('.');
+    const intPart = dotIdx === -1 ? str : str.slice(0, dotIdx);
+    const digits = intPart.replace(/^-/, '');
+
+    // More than 15 integer digits → beyond float precision, render as scientific notation
+    if (digits.length > 15) {
+        const exp = digits.length - 1;
+        const sig = digits[0] + (digits.length > 1 ? '.' + digits.slice(1, 4) : '');
+        const trimmed = sig.replace(/\.?0+$/, '');
+        return `~${trimmed} × 10${toSuperscript(exp)}`;
     }
-    
-    // Handle values less than 1 - show 6 decimals
+
+    const num = parseFloat(str);
+    if (isNaN(num)) return amount;
+    if (num === 0) return '0';
+    if (num < 0.00000001) return num.toExponential(4);
+    if (num < 0.01) return num.toFixed(8).replace(/\.?0+$/, '');
     if (num < 1) return num.toFixed(6).replace(/\.?0+$/, '');
-    
-    // Handle regular numbers - show up to 6 decimals
-    return num.toLocaleString(undefined, { 
+
+    return num.toLocaleString(undefined, {
         minimumFractionDigits: 0,
-        maximumFractionDigits: 6 
+        maximumFractionDigits: 6
     });
 }
 
@@ -493,40 +528,46 @@ function showError(message) {
 
 // Event listeners
 
-resetFiltersBtn.addEventListener('click', () => {
-    // Reset direction and counterparty filters (date range comes from URL and is not resetable here)
-    directionFilter.value = '';
-    counterpartyFilter.value = '';
-    counterpartySelected.textContent = 'All Addresses';
-    counterpartySearch.value = '';
-    renderCounterpartyOptions();
-    
-    // Re-apply filters
-    applyFilters();
-});
+// Reset filters button
+if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener('click', () => {
+        directionFilter && (directionFilter.value = '');
+        if (counterpartyFilter) counterpartyFilter.value = '';
+        if (counterpartySelected) counterpartySelected.textContent = 'All Addresses';
+        if (counterpartySearch) counterpartySearch.value = '';
+        renderCounterpartyOptions();
+        applyFilters();
+    });
+}
 
-headerBackBtn.addEventListener('click', () => {
-    window.location.href = '/';
-});
+if (headerBackBtn) {
+    headerBackBtn.addEventListener('click', () => {
+        window.location.href = '/';
+    });
+}
 
-exportCsvBtn.addEventListener('click', exportToCSV);
+if (exportCsvBtn) exportCsvBtn.addEventListener('click', exportToCSV);
 
-prevPageBtn.addEventListener('click', () => {
-    if (currentPage > 1) {
-        currentPage--;
-        renderTransactions();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-});
+if (prevPageBtn) {
+    prevPageBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            renderTransactions();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    });
+}
 
-nextPageBtn.addEventListener('click', () => {
-    const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
-    if (currentPage < totalPages) {
-        currentPage++;
-        renderTransactions();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-});
+if (nextPageBtn) {
+    nextPageBtn.addEventListener('click', () => {
+        const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderTransactions();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    });
+}
 
 // Sort table headers
 document.querySelectorAll('th[data-sort]').forEach(th => {
@@ -537,13 +578,15 @@ document.querySelectorAll('th[data-sort]').forEach(th => {
 });
 
 // Direction filter - auto-apply (client-side only)
-directionFilter.addEventListener('change', applyFilters);
+if (directionFilter) directionFilter.addEventListener('change', applyFilters);
 
 // Custom dropdown handlers
-counterpartyTrigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleCounterpartyDropdown();
-});
+if (counterpartyTrigger) {
+    counterpartyTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleCounterpartyDropdown();
+    });
+}
 
 // Counterparty search - with safety check
 if (counterpartySearch) {
@@ -559,7 +602,7 @@ if (counterpartySearch) {
 
 // Close dropdown when clicking outside
 document.addEventListener('click', (e) => {
-    if (!counterpartyDropdown.contains(e.target) && e.target !== counterpartyTrigger) {
+    if (counterpartyDropdown && !counterpartyDropdown.contains(e.target) && e.target !== counterpartyTrigger) {
         closeCounterpartyDropdown();
     }
 });

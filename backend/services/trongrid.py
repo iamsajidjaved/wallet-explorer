@@ -21,7 +21,8 @@ class TronGridService:
         self, 
         address: str,
         limit: int = 200,
-        min_timestamp: Optional[int] = None
+        min_timestamp: Optional[int] = None,
+        max_timestamp: Optional[int] = None,
     ) -> list[dict]:
         """Fetch TRC-20 token transactions"""
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -30,17 +31,19 @@ class TronGridService:
                 "limit": limit,
                 "order_by": "block_timestamp,desc"
             }
-            
+
             if min_timestamp:
                 params["min_timestamp"] = min_timestamp
-            
+            if max_timestamp:
+                params["max_timestamp"] = max_timestamp
+
             response = await client.get(
                 url, 
                 headers=self._get_headers(),
                 params=params
             )
             data = response.json()
-            
+
             if data.get("success") and data.get("data"):
                 return data["data"]
             return []
@@ -49,7 +52,8 @@ class TronGridService:
         self, 
         address: str,
         limit: int = 200,
-        min_timestamp: Optional[int] = None
+        min_timestamp: Optional[int] = None,
+        max_timestamp: Optional[int] = None,
     ) -> list[dict]:
         """Fetch TRX (native) transactions"""
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -59,27 +63,42 @@ class TronGridService:
                 "order_by": "block_timestamp,desc",
                 "only_confirmed": "true"
             }
-            
+
             if min_timestamp:
                 params["min_timestamp"] = min_timestamp
-            
+            if max_timestamp:
+                params["max_timestamp"] = max_timestamp
+
             response = await client.get(
                 url,
                 headers=self._get_headers(),
                 params=params
             )
             data = response.json()
-            
+
             if data.get("success") and data.get("data"):
                 return data["data"]
             return []
     
-    async def get_all_transactions(self, address: str) -> list[Transaction]:
+    async def get_all_transactions(
+        self,
+        address: str,
+        min_timestamp_ms: Optional[int] = None,
+        max_timestamp_ms: Optional[int] = None,
+    ) -> list[Transaction]:
         """Fetch all transactions (TRX + TRC-20) for an address"""
-        # Fetch both types in parallel
+        # Fetch both types in parallel, pushing date bounds to the API
         trx_txs, trc20_txs = await asyncio.gather(
-            self.get_trx_transactions(address),
-            self.get_trc20_transactions(address)
+            self.get_trx_transactions(
+                address,
+                min_timestamp=min_timestamp_ms,
+                max_timestamp=max_timestamp_ms,
+            ),
+            self.get_trc20_transactions(
+                address,
+                min_timestamp=min_timestamp_ms,
+                max_timestamp=max_timestamp_ms,
+            ),
         )
         
         transactions = []
