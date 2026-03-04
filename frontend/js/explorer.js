@@ -4,7 +4,7 @@
 let allTransactions = [];
 let filteredTransactions = [];
 let currentPage = 1;
-const ITEMS_PER_PAGE = 50;
+let ITEMS_PER_PAGE = 50;
 let currentSort = { field: 'timestamp', direction: 'desc' };
 
 // Get params from URL
