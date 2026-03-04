@@ -110,8 +110,18 @@
                 <div class="table-header">
                     <h3 class="table-title">📊 Transactions (<span id="filteredCount">0</span>)</h3>
                     <div class="table-actions">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label for="perPageSelect" style="font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap;">Rows per page:</label>
+                            <select id="perPageSelect" style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.35rem 0.6rem; font-size: 0.85rem; cursor: pointer;">
+                                <option value="10">10</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                                <option value="500">500</option>
+                                <option value="1000">1000</option>
+                            </select>
+                        </div>
                         <button id="exportCsvBtn" class="btn btn-secondary" style="padding: 0.5rem 1.5rem;">
-                            📥 Export CSV
+                            📥 Export to Excel
                         </button>
                     </div>
                 </div>

@@ -53,6 +53,7 @@ const counterpartySelected = document.getElementById('counterpartySelected');
 const headerBackBtn = document.getElementById('headerBackBtn');
 const resetFiltersBtn = document.getElementById('resetFiltersBtn');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
+const perPageSelect = document.getElementById('perPageSelect');
 
 const transactionsTBody = document.getElementById('transactionsTBody');
 const filteredCount = document.getElementById('filteredCount');
@@ -434,11 +435,11 @@ function copyToClipboard(text) {
 // Make it globally available for onclick handlers
 window.copyToClipboard = copyToClipboard;
 
-// Export to CSV
+// Export to Excel (CSV format, all filtered records)
 function exportToCSV() {
     const headers = [
-        'Date & Time', 'From', 'To', 'Amount', 
-        'Token', 'Direction', 'Hash', 'Explorer URL'
+        'Date & Time', 'From Address', 'To Address',
+        'Amount', 'Token', 'Direction', 'Explorer'
     ];
 
     const rows = filteredTransactions.map(tx => [
@@ -448,14 +449,13 @@ function exportToCSV() {
         tx.amount,
         tx.token_symbol,
         tx.direction,
-        tx.hash,
         getExplorerUrl(tx)
     ]);
 
     let csv = headers.join(',') + '\n';
-    csv += rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    csv += rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
 
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -577,6 +577,14 @@ if (headerBackBtn) {
 }
 
 if (exportCsvBtn) exportCsvBtn.addEventListener('click', exportToCSV);
+
+if (perPageSelect) {
+    perPageSelect.addEventListener('change', () => {
+        ITEMS_PER_PAGE = parseInt(perPageSelect.value, 10);
+        currentPage = 1;
+        renderTransactions();
+    });
+}
 
 if (prevPageBtn) {
     prevPageBtn.addEventListener('click', () => {
