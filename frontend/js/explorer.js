@@ -369,8 +369,9 @@ function renderTransactions() {
     emptyState.style.display = 'none';
     transactionsSection.style.display = 'block';
 
-    transactionsTBody.innerHTML = pageTransactions.map(tx => `
+    transactionsTBody.innerHTML = pageTransactions.map((tx, index) => `
         <tr>
+            <td>${startIndex + index + 1}</td>
             <td>${tx.datetime}</td>
             <td>
                 <div class="address-cell">
@@ -438,11 +439,12 @@ window.copyToClipboard = copyToClipboard;
 // Export to Excel (CSV format, all filtered records)
 function exportToCSV() {
     const headers = [
-        'Date & Time', 'From Address', 'To Address',
+        '#', 'Date & Time', 'From Address', 'To Address',
         'Amount', 'Token', 'Direction', 'Explorer'
     ];
 
-    const rows = filteredTransactions.map(tx => [
+    const rows = filteredTransactions.map((tx, index) => [
+        index + 1,
         tx.datetime,
         tx.from,
         tx.to,
