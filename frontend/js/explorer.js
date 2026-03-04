@@ -68,7 +68,9 @@ async function fetchTransactions() {
         if (toDate)   params.set('to_date',   toDate);
         const query = params.toString() ? `?${params.toString()}` : '';
         const url = `/api/transactions/${walletAddress}${query}`;
-        console.log('Fetching from URL:', url);
+        console.log('[fetch] walletAddress:', walletAddress);
+        console.log('[fetch] fromDate:', fromDate, '| toDate:', toDate);
+        console.log('[fetch] API URL:', url);
         
         const response = await fetch(url);
         console.log('Response status:', response.status);
@@ -257,16 +259,28 @@ function showDateRangeBanner() {
     }
 }
 
-// Apply filters (direction + counterparty only; date range is handled by the API)
+// Apply filters — date range is enforced BOTH by the API and here client-side as a hard guarantee
 function applyFilters() {
+    // Convert date strings to UTC unix timestamps (seconds) for comparison
+    // Using 'Z' suffix forces UTC interpretation in all browsers
+    const fromTs = fromDate ? new Date(fromDate + 'T00:00:00Z').getTime() / 1000 : null;
+    const toTs   = toDate   ? new Date(toDate   + 'T23:59:59Z').getTime() / 1000 : null;
+
+    console.log('[filter] fromDate:', fromDate, '→ fromTs:', fromTs);
+    console.log('[filter] toDate:',   toDate,   '→ toTs:',   toTs);
+
     filteredTransactions = allTransactions.filter(tx => {
+        // Date range — hard local filter (guaranteed regardless of API behaviour)
+        if (fromTs !== null && tx.timestamp < fromTs) return false;
+        if (toTs   !== null && tx.timestamp > toTs)   return false;
+
         // Direction filter
-        if (directionFilter.value && tx.direction !== directionFilter.value) {
+        if (directionFilter && directionFilter.value && tx.direction !== directionFilter.value) {
             return false;
         }
 
         // Counterparty filter
-        if (counterpartyFilter.value) {
+        if (counterpartyFilter && counterpartyFilter.value) {
             if (tx.from !== counterpartyFilter.value && tx.to !== counterpartyFilter.value) {
                 return false;
             }
@@ -274,6 +288,8 @@ function applyFilters() {
 
         return true;
     });
+
+    console.log('[filter] allTransactions:', allTransactions.length, '→ filtered:', filteredTransactions.length);
 
     currentPage = 1;
     updateSummaryFromFiltered();

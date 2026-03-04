@@ -123,7 +123,9 @@ async function handleSubmit(e) {
             const toDate = toDateInput.value;
             if (fromDate) params.set('from_date', fromDate);
             if (toDate) params.set('to_date', toDate);
-            window.location.href = `/explorer?${params.toString()}`;
+            const redirectUrl = `/explorer?${params.toString()}`;
+            console.log('[wallet] Redirecting to:', redirectUrl);
+            window.location.href = redirectUrl;
         } else {
             showValidation({ 
                 valid: false, 

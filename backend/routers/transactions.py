@@ -98,7 +98,7 @@ async def get_transactions(
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid to_date format: {to_date}. Use YYYY-MM-DD.")
 
-    logger.info(f"Fetching transactions for {network} address: {address} | from_ts={from_ts} to_ts={to_ts}")
+    logger.info(f"Fetching transactions for {network} address: {address} | from_date={from_date} to_date={to_date} | from_ts={from_ts} to_ts={to_ts}")
 
     all_transactions = []
     
@@ -126,11 +126,13 @@ async def get_transactions(
         except Exception as e:
             logger.error(f"Error fetching Tron transactions: {type(e).__name__}: {e}", exc_info=True)
 
-    # Apply date range filter (covers Ethereum; Tron already filtered at source)
+    # Apply date range filter (covers Ethereum and is a safety net for Tron)
+    before_filter = len(all_transactions)
     if from_ts is not None:
         all_transactions = [tx for tx in all_transactions if tx.timestamp >= from_ts]
     if to_ts is not None:
         all_transactions = [tx for tx in all_transactions if tx.timestamp <= to_ts]
+    logger.info(f"Date filter: {before_filter} transactions → {len(all_transactions)} after applying from_ts={from_ts} to_ts={to_ts}")
     
     # Sort by timestamp descending
     all_transactions.sort(key=lambda x: x.timestamp, reverse=True)
