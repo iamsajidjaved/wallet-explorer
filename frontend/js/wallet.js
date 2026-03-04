@@ -4,6 +4,9 @@ const walletInput = document.getElementById('walletAddress');
 const submitBtn = document.getElementById('submitBtn');
 const walletForm = document.getElementById('walletForm');
 const validationMessage = document.getElementById('validationMessage');
+const fromDateInput = document.getElementById('fromDate');
+const toDateInput = document.getElementById('toDate');
+const dateRangeMessage = document.getElementById('dateRangeMessage');
 const exampleBtns = document.querySelectorAll('.example-btn');
 
 // Validation patterns
@@ -114,8 +117,13 @@ async function handleSubmit(e) {
         const data = await response.json();
 
         if (data.valid) {
-            // Redirect to explorer page
-            window.location.href = `/explorer?address=${encodeURIComponent(address)}`;
+            // Build redirect URL with optional date range
+            const params = new URLSearchParams({ address });
+            const fromDate = fromDateInput.value;
+            const toDate = toDateInput.value;
+            if (fromDate) params.set('from_date', fromDate);
+            if (toDate) params.set('to_date', toDate);
+            window.location.href = `/explorer?${params.toString()}`;
         } else {
             showValidation({ 
                 valid: false, 
@@ -146,8 +154,30 @@ function handleExampleClick(e) {
 }
 
 // Event listeners
+// Validate date range inputs
+function validateDateRange() {
+    const from = fromDateInput.value;
+    const to = toDateInput.value;
+    if (from && to && from > to) {
+        dateRangeMessage.textContent = '✗ "From Date" must be on or before "To Date"';
+        dateRangeMessage.className = 'validation-message error';
+        dateRangeMessage.style.display = 'block';
+        return false;
+    }
+    dateRangeMessage.style.display = 'none';
+    return true;
+}
+
 walletInput.addEventListener('input', handleInputChange);
-walletForm.addEventListener('submit', handleSubmit);
+fromDateInput.addEventListener('change', validateDateRange);
+toDateInput.addEventListener('change', validateDateRange);
+walletForm.addEventListener('submit', (e) => {
+    if (!validateDateRange()) {
+        e.preventDefault();
+        return;
+    }
+    handleSubmit(e);
+});
 exampleBtns.forEach(btn => btn.addEventListener('click', handleExampleClick));
 
 // Reset button state when page is shown (e.g., when using browser back button)

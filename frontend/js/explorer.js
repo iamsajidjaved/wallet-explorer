@@ -7,9 +7,11 @@ let currentPage = 1;
 const ITEMS_PER_PAGE = 50;
 let currentSort = { field: 'timestamp', direction: 'desc' };
 
-// Get wallet address from URL
+// Get params from URL
 const urlParams = new URLSearchParams(window.location.search);
 const walletAddress = urlParams.get('address');
+const fromDate = urlParams.get('from_date'); // YYYY-MM-DD
+const toDate = urlParams.get('to_date');     // YYYY-MM-DD
 
 // DOM Elements
 const summarySection = document.getElementById('summarySection');
@@ -25,7 +27,7 @@ const totalTxDisplay = document.getElementById('totalTxDisplay');
 const firstSeenDisplay = document.getElementById('firstSeenDisplay');
 const lastActivityDisplay = document.getElementById('lastActivityDisplay');
 
-const timeFilter = document.getElementById('timeFilter');
+const dateRangeBanner = document.getElementById('dateRangeBanner');
 const directionFilter = document.getElementById('directionFilter');
 const counterpartyFilter = document.getElementById('counterpartyFilter');
 const counterpartySearch = document.getElementById('counterpartySearch');
@@ -81,6 +83,7 @@ async function fetchTransactions() {
 
         updateSummary(data);
         updateCounterpartyFilter();
+        showDateRangeBanner();
         applyFilters();
         
         hideLoading();
@@ -210,35 +213,30 @@ function closeCounterpartyDropdown() {
     renderCounterpartyOptions(); // Reset filter
 }
 
-// Calculate timestamp cutoff for time filter
-function getTimeFilterCutoff(filterValue) {
-    if (!filterValue) return null;
-    
-    const now = Date.now() / 1000; // Current timestamp in seconds
-    const secondsPerDay = 86400;
-    const secondsPerMonth = 2592000; // 30 days
-    
-    const filters = {
-        '10d': now - (10 * secondsPerDay),
-        '20d': now - (20 * secondsPerDay),
-        '30d': now - (30 * secondsPerDay),
-        '3m': now - (3 * secondsPerMonth),
-        '6m': now - (6 * secondsPerMonth),
-        '1y': now - (365 * secondsPerDay)
-    };
-    
-    return filters[filterValue] || null;
+// Show date range banner if dates were specified
+function showDateRangeBanner() {
+    if (!dateRangeBanner) return;
+    if (fromDate || toDate) {
+        const from = fromDate ? new Date(fromDate + 'T00:00:00').toLocaleDateString() : 'beginning';
+        const to = toDate ? new Date(toDate + 'T00:00:00').toLocaleDateString() : 'today';
+        dateRangeBanner.textContent = `📅 Showing transactions from ${from} to ${to}`;
+        dateRangeBanner.style.display = 'block';
+    } else {
+        dateRangeBanner.style.display = 'none';
+    }
 }
 
 // Apply filters
 function applyFilters() {
+    // Precompute date timestamps once
+    const fromTs = fromDate ? new Date(fromDate + 'T00:00:00').getTime() / 1000 : null;
+    const toTs = toDate ? new Date(toDate + 'T23:59:59').getTime() / 1000 : null;
+
     filteredTransactions = allTransactions.filter(tx => {
-        // Time range filter
-        const timeCutoff = getTimeFilterCutoff(timeFilter.value);
-        if (timeCutoff && tx.timestamp < timeCutoff) {
-            return false;
-        }
-        
+        // Date range filter (from URL params)
+        if (fromTs && tx.timestamp < fromTs) return false;
+        if (toTs && tx.timestamp > toTs) return false;
+
         // Direction filter
         if (directionFilter.value && tx.direction !== directionFilter.value) {
             return false;
@@ -496,15 +494,14 @@ function showError(message) {
 // Event listeners
 
 resetFiltersBtn.addEventListener('click', () => {
-    // Reset all filters
-    timeFilter.value = '';
+    // Reset direction and counterparty filters (date range comes from URL and is not resetable here)
     directionFilter.value = '';
     counterpartyFilter.value = '';
     counterpartySelected.textContent = 'All Addresses';
     counterpartySearch.value = '';
     renderCounterpartyOptions();
     
-    // Re-apply filters (will show all transactions)
+    // Re-apply filters
     applyFilters();
 });
 
@@ -538,9 +535,6 @@ document.querySelectorAll('th[data-sort]').forEach(th => {
         sortTransactions(field);
     });
 });
-
-// Time filter change - auto-apply (client-side only)
-timeFilter.addEventListener('change', applyFilters);
 
 // Direction filter - auto-apply (client-side only)
 directionFilter.addEventListener('change', applyFilters);

@@ -216,6 +216,24 @@ header {
     border-color: var(--accent-green);
 }
 
+/* Date range group on wallet input page */
+.date-range-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.date-input-group {
+    margin-bottom: 0 !important;
+}
+
+input[type="date"].wallet-input {
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    color-scheme: dark;
+}
+
 .validation-message {
     margin-top: 0.75rem;
     font-size: 0.875rem;
